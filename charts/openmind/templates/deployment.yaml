@@ -1,0 +1,129 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openmind.fullname" . }}
+  labels:
+    {{- include "openmind.labels" . | nindent 4 }}
+spec:
+  # OpenMind keeps its data in a single SQLite file, so it runs as exactly one
+  # pod, and the old pod must release the volume before the new one starts.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "openmind.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "openmind.selectorLabels" . | nindent 8 }}
+      annotations:
+        # Restart the pod when the chart-managed Secret changes.
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: openmind
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            {{- with .Values.openmind.url }}
+            - name: OPENMIND_URL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- if .Values.openmind.disableSignup }}
+            - name: OPENMIND_DISABLE_SIGNUP
+              value: "1"
+            {{- end }}
+            {{- if .Values.openmind.disablePasswordLogin }}
+            - name: OPENMIND_DISABLE_PASSWORD_LOGIN
+              value: "1"
+            {{- end }}
+            {{- if .Values.openmind.allowPrivateUrls }}
+            - name: OPENMIND_ALLOW_PRIVATE_URLS
+              value: "1"
+            {{- end }}
+            {{- with .Values.ai.model }}
+            - name: OPENMIND_AI_MODEL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.oidc.issuer }}
+            - name: OIDC_ISSUER
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.oidc.clientId }}
+            - name: OIDC_CLIENT_ID
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.oidc.name }}
+            - name: OIDC_NAME
+              value: {{ . | quote }}
+            {{- end }}
+            {{- if .Values.oidc.trustUnverifiedEmail }}
+            - name: OIDC_TRUST_UNVERIFIED_EMAIL
+              value: "1"
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with include "openmind.secretName" . }}
+          envFrom:
+            - secretRef:
+                name: {{ . }}
+          {{- end }}
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 2
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (include "openmind.fullname" .) }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

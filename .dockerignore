@@ -1,0 +1,11 @@
+.git
+.github
+.next
+node_modules
+data
+charts
+.env*
+*.md
+Dockerfile
+.dockerignore
+npm-debug.log*

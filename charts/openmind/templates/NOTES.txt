@@ -1,0 +1,12 @@
+OpenMind is starting. The first account you create owns any existing cards.
+{{ if .Values.ingress.enabled }}
+Open: http{{ if .Values.ingress.tls }}s{{ end }}://{{ (index .Values.ingress.hosts 0).host }}
+{{- else }}
+Reach it with:
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "openmind.fullname" . }} 3000:{{ .Values.service.port }}
+then open http://localhost:3000
+{{- end }}
+{{- if not .Values.persistence.enabled }}
+
+WARNING: persistence is disabled. Everything saved is lost when the pod is replaced.
+{{- end }}

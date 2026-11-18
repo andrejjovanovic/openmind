@@ -1,0 +1,88 @@
+image:
+  repository: ghcr.io/andrejjovanovic/openmind
+  # Defaults to the chart's appVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+openmind:
+  # Public address people reach OpenMind at, e.g. https://mind.example.com.
+  # Needed for single sign-on redirects.
+  url: ""
+  # Stop new password accounts being created (the first one is always allowed).
+  disableSignup: false
+  # Hide the email/password form; only takes effect when SSO is configured.
+  disablePasswordLogin: false
+  # Allow saving links that point at private or loopback addresses.
+  allowPrivateUrls: false
+
+# Optional AI titles, summaries and tags. Enabled when an API key is provided.
+ai:
+  # Stored in the chart's Secret. Prefer existingSecret for real deployments.
+  anthropicApiKey: ""
+  model: ""
+
+# Single sign-on through an OpenID Connect provider such as Pocket ID.
+# Register the callback URL <openmind.url>/auth/callback with the provider.
+oidc:
+  issuer: ""
+  clientId: ""
+  # Stored in the chart's Secret. Leave empty for a public (PKCE-only) client.
+  clientSecret: ""
+  # Label on the login button: "Continue with <name>".
+  name: ""
+  trustUnverifiedEmail: false
+
+# Name of a Secret you manage with any of the keys ANTHROPIC_API_KEY and
+# OIDC_CLIENT_SECRET. When set, the chart creates no Secret of its own.
+existingSecret: ""
+
+# Additional environment variables, as a list of {name, value | valueFrom}.
+extraEnv: []
+
+# The SQLite database and saved images. Without persistence they live in an
+# emptyDir and are lost whenever the pod is replaced.
+persistence:
+  enabled: true
+  size: 5Gi
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  existingClaim: ""
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: mind.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: openmind-tls
+  #    hosts:
+  #      - mind.example.com
+
+resources: {}
+
+podAnnotations: {}
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
